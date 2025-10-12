@@ -23,6 +23,11 @@ def send_message(bot_token: str, chat_id: str, text: str, parse_mode: str = 'Mar
     """
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     
+    # 检查消息长度
+    if len(text) > 4096:
+        print(f"⚠️ 消息长度 {len(text)} 超过 Telegram 限制 4096，将被截断")
+        text = text[:4093] + "..."
+    
     payload = {
         'chat_id': chat_id,
         'text': text,
@@ -32,17 +37,25 @@ def send_message(bot_token: str, chat_id: str, text: str, parse_mode: str = 'Mar
     
     try:
         print("正在发送 Telegram 消息...")
+        print(f"消息长度: {len(text)} 字符")
         
         response = requests.post(url, json=payload, timeout=30)
-        response.raise_for_status()
         
-        result = response.json()
+        # 打印响应状态
+        print(f"HTTP 状态码: {response.status_code}")
         
-        if result.get('ok'):
-            print("✅ Telegram 消息发送成功")
-            return True
+        if response.status_code == 200:
+            result = response.json()
+            if result.get('ok'):
+                print("✅ Telegram 消息发送成功")
+                return True
+            else:
+                print(f"❌ Telegram API 返回错误: {result.get('description', '未知错误')}")
+                print(f"错误代码: {result.get('error_code', 'N/A')}")
+                return False
         else:
-            print(f"❌ Telegram API 返回错误: {result.get('description', '未知错误')}")
+            print(f"❌ HTTP 请求失败: {response.status_code}")
+            print(f"响应内容: {response.text}")
             return False
             
     except requests.exceptions.RequestException as e:
@@ -157,7 +170,11 @@ def format_message_for_telegram(posts: list, timestamp: str) -> str:
         
         for post in subreddit_posts[:2]:  # 每个板块最多显示2个帖子
             # 转义 Markdown 特殊字符
-            title = post['title'].replace('*', '\\*').replace('_', '\\_').replace('[', '\\[').replace(']', '\\]')
+            title = post['title'].replace('*', '\\*').replace('_', '\\_').replace('[', '\\[').replace(']', '\\]').replace('`', '\\`')
+            
+            # 限制标题长度
+            if len(title) > 100:
+                title = title[:97] + "..."
             
             message += f"{post_counter}️⃣ [{title}]({post['url']})\n"
             message += f"⭐ 评分: {post['score']}\n"
@@ -165,6 +182,9 @@ def format_message_for_telegram(posts: list, timestamp: str) -> str:
             # 添加摘要
             summary = post.get('summary', '')
             if summary:
+                # 限制摘要长度
+                if len(summary) > 200:
+                    summary = summary[:197] + "..."
                 message += f"💬 {summary}\n"
             
             message += "\n"
@@ -173,6 +193,10 @@ def format_message_for_telegram(posts: list, timestamp: str) -> str:
     # 消息尾部
     message += f"📅 更新时间: {timestamp} (UTC+8)\n"
     message += "🤖 由 Reddit API 提供 | Gemini 可选摘要"
+    
+    # 检查消息长度，Telegram 限制 4096 字符
+    if len(message) > 4000:
+        message = message[:3997] + "..."
     
     return message
 
