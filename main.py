@@ -76,8 +76,9 @@ def get_beijing_timestamp():
     """获取北京时间戳"""
     # GitHub Actions 运行在 UTC 时间
     # 北京时间 = UTC + 8
+    from datetime import datetime, timedelta
     utc_now = datetime.utcnow()
-    beijing_time = utc_now.replace(hour=utc_now.hour + 8)
+    beijing_time = utc_now + timedelta(hours=8)
     
     return beijing_time.strftime("%Y-%m-%d %H:%M")
 
@@ -89,20 +90,21 @@ def main():
     
     try:
         # 1. 加载配置
+        print("📋 加载配置...")
         config = load_configuration()
         
         # 2. 验证 Telegram 配置
-        print("验证 Telegram 配置...")
+        print("🔍 验证 Telegram 配置...")
         if not validate_telegram_config(config['telegram_bot_token'], config['chat_id']):
             print("❌ Telegram 配置验证失败")
             sys.exit(1)
         
         # 3. 获取目标板块
         subreddits = get_target_subreddits()
-        print(f"目标板块: {', '.join(subreddits)}")
+        print(f"🎯 目标板块: {', '.join(subreddits)}")
         
         # 4. 抓取 Reddit 帖子
-        print("\n开始抓取 Reddit 帖子...")
+        print("\n📡 开始抓取 Reddit 帖子...")
         posts = fetch_multiple_subreddits(subreddits, posts_per_subreddit=2)
         
         if not posts:
@@ -112,16 +114,16 @@ def main():
         print(f"✅ 成功获取 {len(posts)} 个帖子")
         
         # 5. 处理帖子 (生成摘要)
-        print("\n开始处理帖子...")
+        print("\n🤖 开始处理帖子...")
         processed_posts = process_posts(posts, config['gemini_api_key'])
         
         # 6. 格式化消息
-        print("\n格式化消息...")
+        print("\n📝 格式化消息...")
         timestamp = get_beijing_timestamp()
         message = format_message_for_telegram(processed_posts, timestamp)
         
         # 7. 发送到 Telegram
-        print("\n发送消息到 Telegram...")
+        print("\n📤 发送消息到 Telegram...")
         success = send_message_with_retry(
             config['telegram_bot_token'],
             config['chat_id'],
@@ -139,6 +141,8 @@ def main():
         sys.exit(0)
     except Exception as e:
         print(f"❌ 程序执行出错: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
 
 
