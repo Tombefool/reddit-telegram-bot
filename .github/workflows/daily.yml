@@ -51,15 +51,15 @@ jobs:
           echo "🧪 运行简化测试..."
           python test_simple.py
       
-      - name: Run Reddit Bot
+      - name: Run Simple Reddit Bot
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          echo "🚀 开始运行 Reddit Bot..."
-          python main.py
-          echo "✅ Reddit Bot 运行完成"
+          echo "🚀 开始运行极简版 Reddit Bot..."
+          python main_simple.py
+          echo "✅ 极简版 Reddit Bot 运行完成"
       
       - name: Notify on failure
         if: failure()
