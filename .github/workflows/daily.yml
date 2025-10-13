@@ -73,8 +73,10 @@ jobs:
       - name: Run bot (debug wrapper)
         # Use a wrapper that prints debug info and runs main.py with verbose logging
         run: |
+          # Normalize line endings to avoid bash^M on Linux runners
+          sed -i 's/\r$//' run_bot.sh || true
           chmod +x run_bot.sh || true
-          ./run_bot.sh
+          bash -euxo pipefail run_bot.sh
         # No secrets in the workflow file; they come from repo secrets automatically
 
       - name: Upload logs (optional)
