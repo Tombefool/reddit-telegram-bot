@@ -70,6 +70,11 @@ jobs:
           echo "CHAT_ID set? -> $(if [ -z \"$CHAT_ID\" ]; then echo 'NO'; else echo 'YES'; fi)"
           echo "GEMINI_API_KEY set? -> $(if [ -z \"$GEMINI_API_KEY\" ]; then echo 'NO'; else echo 'YES'; fi)"
 
+      - name: Run minimal test first
+        run: |
+          echo "🧪 运行最小化测试..."
+          python test_minimal.py
+      
       - name: Run bot (debug wrapper)
         # Use a wrapper that prints debug info and runs main.py with verbose logging
         run: |
