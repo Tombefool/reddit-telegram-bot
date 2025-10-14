@@ -33,11 +33,18 @@ def fetch_reddit_posts():
     subreddits = ['stocks', 'wallstreetbets', 'investing', 'cryptocurrency', 'bitcoin']
     
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept': 'application/json',
-        'Accept-Language': 'en-US,en;q=0.9',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Accept-Language': 'en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7',
         'Accept-Encoding': 'gzip, deflate, br',
-        'Connection': 'keep-alive'
+        'DNT': '1',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Cache-Control': 'max-age=0'
     }
     
     for subreddit in subreddits:
@@ -67,7 +74,7 @@ def fetch_reddit_posts():
                 log(f"  ❌ r/{subreddit}: HTTP {response.status_code}")
             
             # 添加延迟避免被限流
-            time.sleep(1)
+            time.sleep(3)
             
         except Exception as e:
             log(f"  ❌ r/{subreddit}: {e}")
@@ -187,8 +194,24 @@ def main():
         posts = fetch_reddit_posts()
         
         if not posts:
-            log("❌ 没有获取到任何帖子")
-            sys.exit(1)
+            log("⚠️ 没有获取到任何帖子，发送备用消息")
+            # 发送备用消息而不是退出
+            backup_message = f"""🔔 每日 Reddit 财经要闻
+
+📅 更新时间: {get_beijing_timestamp()} (UTC+8)
+
+⚠️ 今日 Reddit API 暂时不可用
+🤖 请稍后查看 Reddit 官网获取最新资讯
+
+💡 我们正在努力恢复服务..."""
+            
+            success = send_telegram_message(bot_token, chat_id, backup_message)
+            if success:
+                log("✅ 备用消息发送成功")
+                return
+            else:
+                log("❌ 备用消息发送失败")
+                sys.exit(1)
         
         # 3. 生成摘要
         log("🤖 生成帖子摘要...")
