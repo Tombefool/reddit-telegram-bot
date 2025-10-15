@@ -3,7 +3,7 @@ services:
     name: reddit-telegram-bot
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python main_intelligent_news.py
+    startCommand: python main_enhanced_news.py
     schedule: "0 1 * * *"  # 每天 UTC 01:00 (北京时间 09:00)
     envVars:
       - key: TELEGRAM_BOT_TOKEN
@@ -11,4 +11,6 @@ services:
       - key: CHAT_ID
         sync: false
       - key: GEMINI_API_KEY
+        sync: false
+      - key: GNEWS_API_KEY
         sync: false
