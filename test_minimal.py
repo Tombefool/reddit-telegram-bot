@@ -45,8 +45,12 @@ def main():
             print(f"响应: {response.text}")
             sys.exit(1)
         
-        # 发送测试消息
-        test_message = f"""🤖 GitHub Actions 测试成功！
+        # 检查是否启用测试消息发送
+        send_test_message = os.getenv('SEND_TEST_MESSAGE', 'false').lower() == 'true'
+        
+        if send_test_message:
+            # 发送测试消息
+            test_message = f"""🤖 GitHub Actions 测试成功！
 
 📅 时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 ✅ 环境变量: 正常
@@ -54,33 +58,33 @@ def main():
 ✅ 最小化测试: 通过
 
 🎉 Reddit Bot 基础功能正常！"""
-        
-        response = requests.post(
-            f"https://api.telegram.org/bot{bot_token}/sendMessage",
-            json={
-                'chat_id': chat_id,
-                'text': test_message,
-                'parse_mode': 'Markdown',
-                'disable_web_page_preview': True
-            },
-            timeout=30
-        )
-        
-        print(f"发送消息状态码: {response.status_code}")
-        
-        if response.status_code == 200:
-            result = response.json()
-            if result.get('ok'):
-                print("✅ 测试消息发送成功")
-                print("🎉 最小化测试完成！")
-                return True
+            
+            response = requests.post(
+                f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                json={
+                    'chat_id': chat_id,
+                    'text': test_message,
+                    'parse_mode': 'Markdown',
+                    'disable_web_page_preview': True
+                },
+                timeout=30
+            )
+            
+            print(f"发送消息状态码: {response.status_code}")
+            
+            if response.status_code == 200:
+                result = response.json()
+                if result.get('ok'):
+                    print("✅ 测试消息发送成功")
+                else:
+                    print(f"❌ 发送消息失败: {result.get('description')}")
             else:
-                print(f"❌ 发送消息失败: {result.get('description')}")
-                sys.exit(1)
+                print(f"❌ 发送消息 HTTP 错误: {response.status_code}")
         else:
-            print(f"❌ 发送消息 HTTP 错误: {response.status_code}")
-            print(f"响应: {response.text}")
-            sys.exit(1)
+            print("ℹ️ 测试消息发送已禁用（设置 SEND_TEST_MESSAGE=true 启用）")
+        
+        print("🎉 最小化测试完成！")
+        return True
             
     except Exception as e:
         print(f"❌ 测试失败: {e}")

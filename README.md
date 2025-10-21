@@ -65,17 +65,30 @@ cd reddit-telegram-bot
 
 ```
 reddit-telegram-bot/
-├── main.py                 # 主程序入口
-├── reddit_fetcher.py       # Reddit 数据抓取
-├── summarizer.py           # 文本摘要模块
-├── telegram_sender.py      # Telegram 消息发送
-├── requirements.txt        # Python 依赖
-├── env.example            # 环境变量示例
-├── .gitignore             # Git 忽略文件
-├── README.md              # 项目文档
-└── .github/
-    └── workflows/
-        └── daily.yml      # GitHub Actions 工作流
+├── 核心程序
+│   ├── main.py                    # 主程序入口（推荐使用）
+│   └── main_comprehensive_final.py # 备用程序（Render 部署）
+├── 功能模块
+│   ├── reddit_fetcher.py          # Reddit 数据抓取
+│   ├── telegram_sender.py         # Telegram 消息发送
+│   ├── summarizer.py              # AI 文本摘要
+│   ├── social_fetcher.py          # 社交媒体抓取
+│   ├── us_china_news_fetcher.py   # 中美关系新闻
+│   └── international_relations_fetcher.py # 国际关系动态
+├── 配置文件
+│   ├── requirements.txt           # Python 依赖
+│   ├── env.example               # 环境变量示例
+│   ├── sources.json              # 数据源配置
+│   └── render.yaml               # Render 部署配置
+├── 部署文件
+│   ├── .github/workflows/daily.yml # GitHub Actions
+│   └── run_bot.sh                # 运行脚本
+├── 测试文件
+│   ├── test_minimal.py           # 最小化测试
+│   └── check_sources_health.py   # 源健康检查
+└── 文档
+    ├── README.md                 # 项目说明
+    └── 各种分析报告
 ```
 
 ## 🔧 本地开发

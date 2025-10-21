@@ -1,0 +1,56 @@
+{
+  "primary": [
+    { "name": "AP News", "url": "https://apnews.com/apf-topnews?output=rss" },
+    { "name": "Reuters World", "url": "https://feeds.reuters.com/reuters/worldNews" },
+    { "name": "Sputnik", "url": "https://sputniknews.com/export/rss2/archive/index.xml" },
+    { "name": "联合早报", "url": "https://www.zaobao.com.sg/rss.xml" }
+  ],
+  "secondary": [
+    { "name": "NPR News", "url": "http://www.npr.org/rss/rss.php?id=1001" },
+    { "name": "HuffPost World", "url": "https://www.huffpost.com/section/world-news/feed" },
+    { "name": "FOX News", "url": "http://feeds.foxnews.com/foxnews/latest" },
+    { "name": "NYT Top Stories", "url": "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml" },
+    { "name": "CNN International", "url": "http://rss.cnn.com/rss/edition.rss" },
+    { "name": "Bloomberg", "url": "https://feeds.bloomberg.com/markets/news.rss" }
+  ],
+  "nitter_mirrors": [
+    "https://nitter.net",
+    "https://nitter.poast.org",
+    "https://nitter.fdn.fr",
+    "https://nitter.privacydev.net",
+    "https://n.shadowtricks.com"
+  ],
+  "rsshub_mirrors": [
+    "https://rsshub.app",
+    "https://rsshub.hellogithub.work",
+    "https://rsshub.moeyy.cn"
+  ],
+  "social_groups": {
+    "government": {
+      "enabled": true,
+      "weight": 1.0,
+      "accounts": ["WhiteHouse","POTUS","StateDept","SecBlinken","USTreasury","CommerceGov","USTR","NATOpress","USUN","HouseForeign"]
+    },
+    "conflict": {
+      "enabled": true,
+      "weight": 0.9,
+      "accounts": ["KremlinRussia_E","GovUkraine","mod_russia","DefenceU","NATO","osce","WarMonitorINT"]
+    },
+    "markets": {
+      "enabled": true,
+      "weight": 0.85,
+      "accounts": ["FederalReserve","NASDAQ","WSJmarkets","CoinDesk","IMFNews","WorldBank","ecb"]
+    },
+    "media": {
+      "enabled": true,
+      "weight": 0.8,
+      "accounts": ["APBusiness","Reuters","Bloomberg","CNBC","FT","guardian"],
+      "youtube": {"enabled": false, "channels": ["Bloomberg","CNBC"]}
+    },
+    "thinktanks": {
+      "enabled": true,
+      "weight": 0.7,
+      "accounts": ["CSIS","BrookingsInst","Heritage","RANDCorporation","CFR_org","AtlanticCouncil","CarnegieEndow"]
+    }
+  }
+}

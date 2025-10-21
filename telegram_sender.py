@@ -6,6 +6,7 @@ Telegram 消息发送模块
 import requests
 import time
 from typing import Optional
+from datetime import datetime, timedelta
 
 
 def send_message(bot_token: str, chat_id: str, text: str, parse_mode: str = 'Markdown') -> bool:
@@ -153,7 +154,7 @@ def format_message_for_telegram(posts: list, timestamp: str) -> str:
         return "📭 今天没有找到相关帖子"
     
     # 消息头部
-    message = "🔔 每日 Reddit 财经要闻 (股票 & 加密货币)\n\n"
+    message = "🔔 每日财经要闻 & 国际关系动态\n\n"
     
     # 按板块分组显示
     subreddit_groups = {}
@@ -177,7 +178,34 @@ def format_message_for_telegram(posts: list, timestamp: str) -> str:
                 title = title[:97] + "..."
             
             message += f"{post_counter}️⃣ [{title}]({post['url']})\n"
-            message += f"⭐ 评分: {post['score']}\n"
+            # 相对时间显示（若有 created_utc）
+            created_utc = post.get('created_utc')
+            rel = None
+            try:
+                if isinstance(created_utc, (int, float)) and created_utc > 0:
+                    dt = datetime.utcfromtimestamp(created_utc)
+                    delta = datetime.utcnow() - dt
+                    if delta < timedelta(minutes=1):
+                        rel = "刚刚"
+                    elif delta < timedelta(hours=1):
+                        rel = f"{int(delta.total_seconds() // 60)} 分钟前"
+                    elif delta < timedelta(days=1):
+                        rel = f"{int(delta.total_seconds() // 3600)} 小时前"
+                    else:
+                        rel = f"{int(delta.days)} 天前"
+            except Exception:
+                rel = None
+
+            if rel:
+                message += f"🕒 {rel} | ⭐ 评分: {post['score']}"
+                if post.get('quality_score', 0) > 0:
+                    message += f" | 🏆 质量: {post['quality_score']}"
+                message += "\n"
+            else:
+                message += f"⭐ 评分: {post['score']}"
+                if post.get('quality_score', 0) > 0:
+                    message += f" | 🏆 质量: {post['quality_score']}"
+                message += "\n"
             
             # 添加摘要
             summary = post.get('summary', '')
