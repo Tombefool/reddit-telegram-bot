@@ -8,12 +8,12 @@
 - 📊 **多板块抓取**: 覆盖 stocks、wallstreetbets、investing、cryptocurrency、bitcoin 等热门板块
 - 🤖 **智能摘要**: 支持 Gemini API 生成中文摘要（可选）
 - 📱 **Telegram 推送**: 格式化消息推送到指定 Telegram 群组/频道
-- ☁️ **免费部署**: 使用 GitHub Actions，无需付费云服务
+- ☁️ **免费部署**: 使用 Render Cron Job，稳定可靠
 - 🛡️ **稳定可靠**: 包含错误处理和重试机制
 
 ## 📋 前置要求
 
-- GitHub 账号
+- Render 账号（免费）
 - Telegram 账号
 - （可选）Google Gemini API Key
 
