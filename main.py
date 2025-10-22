@@ -119,9 +119,45 @@ def is_recent(created_utc: float, freshness_hours: int = 2) -> bool:
         return False
 
 
-def filter_fresh_posts(posts, freshness_hours: int = 2):
-    """仅保留新鲜帖子"""
-    return [p for p in posts if is_recent(p.get('created_utc', 0), freshness_hours)]
+def filter_fresh_posts(posts, freshness_hours: int = 6):
+    """智能过滤新鲜帖子，根据内容类型调整新鲜度要求"""
+    current_time = datetime.now()
+    fresh_posts = []
+    
+    for post in posts:
+        try:
+            created_time = datetime.fromtimestamp(post.get('created_utc', 0))
+            hours_old = (current_time - created_time).total_seconds() / 3600
+            
+            # 智能新鲜度判断
+            if hours_old <= 2:
+                post['freshness_score'] = 3  # 非常新鲜
+            elif hours_old <= 6:
+                post['freshness_score'] = 2  # 比较新鲜
+            elif hours_old <= 24:
+                post['freshness_score'] = 1  # 一般新鲜
+            else:
+                post['freshness_score'] = 0  # 过时
+            
+            # 根据内容类型调整新鲜度要求
+            title = post.get('title', '').lower()
+            if any(keyword in title for keyword in ['breaking', 'urgent', 'live', 'just in']):
+                # 突发新闻放宽到12小时
+                if hours_old <= 12:
+                    fresh_posts.append(post)
+            elif any(keyword in title for keyword in ['analysis', 'opinion', 'review']):
+                # 分析类文章放宽到48小时
+                if hours_old <= 48:
+                    fresh_posts.append(post)
+            elif hours_old <= freshness_hours:
+                fresh_posts.append(post)
+                
+        except Exception as e:
+            print(f"⚠️ 时间解析错误: {e}")
+            # 如果时间解析失败，默认包含
+            fresh_posts.append(post)
+    
+    return fresh_posts
 
 
 def filter_by_keywords(posts, keyword_csv: str):
@@ -180,15 +216,16 @@ def filter_dedup(conn, posts, dedupe_hours: int = 24):
 
 
 def calculate_content_score(post):
-    """计算内容质量评分"""
+    """智能计算内容质量评分"""
     score = 0
     
-    # 来源权重评分
+    # 来源权重评分（更全面的权重体系）
     source_weights = {
-        'UN News': 5, 'NATO News': 5, 'EU News': 4,
-        'BBC World': 4, 'Reuters': 4, 'South China Morning Post': 4,
-        'Foreign Policy': 4, 'Al Jazeera': 3,
-        'truth-social': 3, 'trump-youtube': 2
+        'UN News': 8, 'NATO News': 8, 'EU News': 7,
+        'BBC World': 7, 'Reuters': 7, 'South China Morning Post': 6,
+        'Foreign Policy': 6, 'Al Jazeera': 5, 'CNN': 5,
+        'Wall Street Journal': 6, 'Financial Times': 6,
+        'truth-social': 4, 'trump-youtube': 3, 'reddit': 2
     }
     
     source = post.get('source', post.get('subreddit', '')).lower()
@@ -199,44 +236,70 @@ def calculate_content_score(post):
     else:
         score += 1  # 默认权重
     
-    # 新鲜度评分
-    try:
-        created_time = datetime.fromtimestamp(post.get('created_utc', 0))
-        hours_old = (datetime.now() - created_time).total_seconds() / 3600
-        
-        if hours_old < 2:
-            score += 3
-        elif hours_old < 6:
-            score += 2
-        elif hours_old < 24:
-            score += 1
-    except:
-        pass
+    # 新鲜度评分（使用之前计算的分数）
+    freshness_score = post.get('freshness_score', 0)
+    score += freshness_score * 2  # 新鲜度权重加倍
     
-    # 关键词重要性评分
-    important_keywords = [
-        'urgent', 'breaking', 'crisis', 'war', 'conflict', 'emergency',
-        'urgent', 'breaking', 'crisis', 'war', 'conflict', 'emergency',
-        'urgent', 'breaking', 'crisis', 'war', 'conflict', 'emergency'
-    ]
-    
+    # 关键词重要性评分（更智能的关键词检测）
     title = post.get('title', '').lower()
     content = post.get('selftext', '').lower()
     text = f"{title} {content}"
     
-    for keyword in important_keywords:
+    # 高优先级关键词
+    high_priority_keywords = [
+        'breaking', 'urgent', 'crisis', 'emergency', 'alert',
+        'war', 'conflict', 'attack', 'bomb', 'explosion',
+        'election', 'vote', 'president', 'congress', 'senate',
+        'market crash', 'recession', 'inflation', 'fed', 'interest rate'
+    ]
+    
+    # 中优先级关键词
+    medium_priority_keywords = [
+        'analysis', 'report', 'study', 'research', 'data',
+        'policy', 'law', 'regulation', 'trade', 'tariff',
+        'technology', 'ai', 'artificial intelligence', 'cyber'
+    ]
+    
+    # 检查高优先级关键词
+    for keyword in high_priority_keywords:
+        if keyword in text:
+            score += 4
+            break
+    
+    # 检查中优先级关键词
+    for keyword in medium_priority_keywords:
         if keyword in text:
             score += 2
             break
     
-    # 内容长度评分（避免太短的内容）
+    # 内容质量评分
     content_length = len(post.get('selftext', ''))
-    if content_length > 100:
-        score += 1
-    if content_length > 300:
+    if content_length > 200:
+        score += 2
+    elif content_length > 100:
         score += 1
     
-    return score
+    # 标题质量评分
+    title_length = len(title)
+    if 20 <= title_length <= 100:  # 标题长度适中
+        score += 1
+    
+    # 互动度评分（如果有的话）
+    upvotes = post.get('ups', 0)
+    comments = post.get('num_comments', 0)
+    if upvotes > 100:
+        score += 2
+    elif upvotes > 50:
+        score += 1
+    
+    if comments > 50:
+        score += 1
+    
+    # 避免重复内容评分
+    if 'repost' in text or 're:' in title.lower():
+        score -= 2
+    
+    return max(0, score)  # 确保分数不为负
 
 
 def score_and_sort_posts(posts):
@@ -249,6 +312,53 @@ def score_and_sort_posts(posts):
     
     # 按质量评分排序，评分相同时按时间排序
     return sorted(scored_posts, key=lambda x: (x['quality_score'], x.get('created_utc', 0)), reverse=True)
+
+
+def smart_content_filter(posts):
+    """智能内容过滤，去除低质量和重复内容"""
+    if not posts:
+        return posts
+    
+    filtered_posts = []
+    seen_titles = set()
+    seen_urls = set()
+    
+    for post in posts:
+        # 基本质量检查
+        quality_score = post.get('quality_score', 0)
+        if quality_score < 3:  # 质量分数太低
+            continue
+        
+        # 标题去重
+        title = post.get('title', '').lower().strip()
+        if not title or title in seen_titles:
+            continue
+        
+        # URL去重
+        url = post.get('url', '')
+        if url in seen_urls:
+            continue
+        
+        # 内容长度检查
+        content = post.get('selftext', '')
+        if len(content) < 20 and quality_score < 8:  # 内容太短且质量不高
+            continue
+        
+        # 标题质量检查
+        if len(title) < 10:  # 标题太短
+            continue
+        
+        # 避免明显的垃圾内容
+        spam_keywords = ['click here', 'free money', 'guaranteed', 'make money fast']
+        if any(keyword in title for keyword in spam_keywords):
+            continue
+        
+        # 通过所有检查
+        filtered_posts.append(post)
+        seen_titles.add(title)
+        seen_urls.add(url)
+    
+    return filtered_posts
 
 
 def mark_pushed(conn, posts):
@@ -390,9 +500,9 @@ def main():
             else:
                 print("⚠️ Truth Social(Playwright) 未获取内容（已回退缓存策略）")
         
-        # 4.3 新鲜度过滤（≤24 小时）
-        fresh_posts = filter_fresh_posts(posts, freshness_hours=24)
-        print(f"🕒 新鲜度过滤(≤24h)后: {len(fresh_posts)} 个帖子")
+        # 4.3 智能新鲜度过滤
+        fresh_posts = filter_fresh_posts(posts, freshness_hours=6)
+        print(f"🕒 智能新鲜度过滤后: {len(fresh_posts)} 个帖子")
 
         # 4.4 关键词过滤（可选）
         filtered_posts = filter_by_keywords(fresh_posts, config.get('filter_keywords',''))
@@ -412,9 +522,13 @@ def main():
             print(f"♻️ 去重后: {len(unique_posts)} 个帖子")
             posts = unique_posts
 
-        # 4.6 内容质量评分和排序
+        # 4.6 智能内容质量评分和排序
         posts = score_and_sort_posts(posts)
-        print(f"📊 内容质量评分完成，最高分: {posts[0]['quality_score'] if posts else 0}")
+        print(f"📊 智能内容质量评分完成，最高分: {posts[0]['quality_score'] if posts else 0}")
+        
+        # 4.7 智能去重和内容质量过滤
+        posts = smart_content_filter(posts)
+        print(f"🧠 智能内容过滤后: {len(posts)} 个帖子")
         
         # 4.7 动态推送数量控制
         base_limit = 15  # 基础限制从10增加到15

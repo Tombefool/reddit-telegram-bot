@@ -141,7 +141,7 @@ def validate_telegram_config(bot_token: str, chat_id: str) -> bool:
 
 def format_message_for_telegram(posts: list, timestamp: str) -> str:
     """
-    格式化消息用于 Telegram 发送
+    格式化消息用于 Telegram 发送 - 优化版
     
     Args:
         posts: 帖子列表
@@ -151,78 +151,92 @@ def format_message_for_telegram(posts: list, timestamp: str) -> str:
         格式化后的消息
     """
     if not posts:
-        return "📭 今天没有找到相关帖子"
+        return "📭 今日暂无重要资讯"
     
-    # 消息头部
-    message = "🔔 每日财经要闻 & 国际关系动态\n\n"
+    # 智能消息头部
+    current_hour = datetime.now().hour
+    if 6 <= current_hour <= 12:
+        header = "🌅 晨间财经要闻"
+    elif 18 <= current_hour <= 22:
+        header = "🌆 晚间市场动态"
+    else:
+        header = "📰 实时资讯速递"
     
-    # 按板块分组显示
-    subreddit_groups = {}
-    for post in posts:
-        subreddit = post['subreddit']
-        if subreddit not in subreddit_groups:
-            subreddit_groups[subreddit] = []
-        subreddit_groups[subreddit].append(post)
+    message = f"{header}\n\n"
+    
+    # 按重要性和新鲜度排序
+    sorted_posts = sorted(posts, key=lambda x: (
+        x.get('quality_score', 0) + x.get('freshness_score', 0) * 2,
+        x.get('score', 0)
+    ), reverse=True)
     
     # 生成消息内容
     post_counter = 1
-    for subreddit, subreddit_posts in subreddit_groups.items():
-        message += f"【r/{subreddit}】\n"
+    for post in sorted_posts[:12]:  # 最多显示12条
+        # 转义 Markdown 特殊字符
+        title = post['title'].replace('*', '\\*').replace('_', '\\_').replace('[', '\\[').replace(']', '\\]').replace('`', '\\`')
         
-        for post in subreddit_posts[:2]:  # 每个板块最多显示2个帖子
-            # 转义 Markdown 特殊字符
-            title = post['title'].replace('*', '\\*').replace('_', '\\_').replace('[', '\\[').replace(']', '\\]').replace('`', '\\`')
-            
-            # 限制标题长度
-            if len(title) > 100:
-                title = title[:97] + "..."
-            
-            message += f"{post_counter}️⃣ [{title}]({post['url']})\n"
-            # 相对时间显示（若有 created_utc）
-            created_utc = post.get('created_utc')
-            rel = None
-            try:
-                if isinstance(created_utc, (int, float)) and created_utc > 0:
-                    dt = datetime.utcfromtimestamp(created_utc)
-                    delta = datetime.utcnow() - dt
-                    if delta < timedelta(minutes=1):
-                        rel = "刚刚"
-                    elif delta < timedelta(hours=1):
-                        rel = f"{int(delta.total_seconds() // 60)} 分钟前"
-                    elif delta < timedelta(days=1):
-                        rel = f"{int(delta.total_seconds() // 3600)} 小时前"
-                    else:
-                        rel = f"{int(delta.days)} 天前"
-            except Exception:
-                rel = None
-
-            if rel:
-                message += f"🕒 {rel} | ⭐ 评分: {post['score']}"
-                if post.get('quality_score', 0) > 0:
-                    message += f" | 🏆 质量: {post['quality_score']}"
-                message += "\n"
-            else:
-                message += f"⭐ 评分: {post['score']}"
-                if post.get('quality_score', 0) > 0:
-                    message += f" | 🏆 质量: {post['quality_score']}"
-                message += "\n"
-            
-            # 添加摘要
-            summary = post.get('summary', '')
-            if summary:
-                # 限制摘要长度
-                if len(summary) > 200:
-                    summary = summary[:197] + "..."
-                message += f"💬 {summary}\n"
-            
-            message += "\n"
-            post_counter += 1
+        # 智能标题处理
+        if len(title) > 80:
+            title = title[:77] + "..."
+        
+        # 添加重要性标识
+        quality_score = post.get('quality_score', 0)
+        if quality_score >= 15:
+            importance = "🔥"
+        elif quality_score >= 10:
+            importance = "⭐"
+        else:
+            importance = "📌"
+        
+        message += f"{importance} **{title}**\n"
+        message += f"🔗 [查看原文]({post['url']})\n"
+        
+        # 时间信息
+        created_utc = post.get('created_utc')
+        time_info = ""
+        try:
+            if isinstance(created_utc, (int, float)) and created_utc > 0:
+                dt = datetime.utcfromtimestamp(created_utc)
+                delta = datetime.utcnow() - dt
+                if delta < timedelta(minutes=30):
+                    time_info = "🆕 刚刚"
+                elif delta < timedelta(hours=1):
+                    time_info = f"🕐 {int(delta.total_seconds() // 60)}分钟前"
+                elif delta < timedelta(hours=6):
+                    time_info = f"🕕 {int(delta.total_seconds() // 3600)}小时前"
+                else:
+                    time_info = f"📅 {int(delta.days)}天前"
+        except Exception:
+            time_info = "📅 时间未知"
+        
+        # 来源信息
+        source = post.get('subreddit', 'unknown')
+        source_emoji = {
+            'stocks': '📈', 'wallstreetbets': '🎯', 'bitcoin': '₿',
+            'cryptocurrency': '💎', 'investing': '💰', 'china': '🇨🇳',
+            'geopolitics': '🌍', 'worldnews': '🌐', 'politics': '🏛️'
+        }.get(source.lower(), '📰')
+        
+        message += f"{time_info} | {source_emoji} r/{source} | ⭐ {post.get('score', 0)}\n"
+        
+        # 添加智能摘要
+        summary = post.get('summary', '')
+        if summary:
+            # 清理摘要
+            summary = summary.strip()
+            if len(summary) > 150:
+                summary = summary[:147] + "..."
+            message += f"💡 {summary}\n"
+        
+        message += "\n"
+        post_counter += 1
     
-    # 消息尾部
-    message += f"📅 更新时间: {timestamp} (UTC+8)\n"
-    message += "🤖 由 Reddit API 提供 | Gemini 可选摘要"
+    # 智能消息尾部
+    message += f"⏰ 更新时间: {timestamp} (北京时间)\n"
+    message += "🤖 智能筛选 | AI 摘要 | 实时更新"
     
-    # 检查消息长度，Telegram 限制 4096 字符
+    # 检查消息长度
     if len(message) > 4000:
         message = message[:3997] + "..."
     

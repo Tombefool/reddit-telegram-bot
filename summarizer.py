@@ -48,19 +48,25 @@ def summarize_with_gemini(title: str, text: str, api_key: str) -> str:
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel('gemini-2.5-flash')
         
-        # 构建提示词
+        # 构建智能提示词
         prompt = f"""
-请为以下 Reddit 帖子生成一个简洁的中文摘要 (2-3句话):
+你是一位专业的新闻编辑，请为以下内容生成高质量的中文摘要：
 
 标题: {title}
 
-内容: {text[:1000]}  # 限制内容长度避免 token 超限
+内容: {text[:1000]}
 
 要求:
-1. 摘要要简洁明了,突出关键信息
-2. 使用中文
-3. 控制在 2-3 句话内
-4. 如果内容涉及股票或加密货币,请保持客观
+1. 摘要要简洁有力，突出核心信息
+2. 使用自然流畅的中文表达
+3. 控制在2-3句话内
+4. 保持客观中立，避免主观判断
+5. 如果涉及金融内容，请用专业术语
+6. 如果涉及政治内容，请保持平衡报道
+7. 避免使用"据悉"、"据报道"等冗余表达
+8. 直接陈述事实，不要添加解释性语言
+
+请直接输出摘要，不要任何前缀或后缀。
 """
         
         response = model.generate_content(prompt)
